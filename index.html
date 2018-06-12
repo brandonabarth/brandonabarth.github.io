@@ -1,0 +1,198 @@
+<html>
+
+	<script src="two.js">
+	</script>
+	
+	<script>
+	var dragging = false;
+	var ctrlHeld = false;
+	var x;
+	var y;
+	var lastX;
+	var lastY;
+	
+	function mouseDown(e){
+		x = e.clientX;
+		y = e.clientY;
+		lastX = x;
+		lastY = y;
+		dragging = true;
+		if(e.ctrlKey) ctrlHeld=true;
+	}
+	
+	function mouseUp(e){
+		x = e.clientX;
+		y = e.clientY;
+		dragging = false;
+		ctrlHeld = false;
+	}
+	
+	function mouseMove(e){
+		if(dragging){
+			x = e.clientX;
+			y = e.clientY;
+			xdiff = x-lastX;
+			ydiff = y-lastY;
+			if(!ctrlHeld){
+				two.scene.translation.x += xdiff;
+				two.scene.translation.y += ydiff;
+			}
+			else{
+				scaleFactor = 1 + (-ydiff/100);
+				two.scene.scale *= scaleFactor;
+			}	
+			lastX = x;
+			lastY = y;
+		}
+	}
+	</script>
+	
+	<div id="physics-canvas" onmousemove="mouseMove(event)" onmousedown="mouseDown(event)" onmouseup="mouseUp(event)">
+	</div>
+	
+	<script>
+	var elem = document.getElementById('physics-canvas');
+	var params = { fullscreen: true };
+	var two = new Two(params).appendTo(elem);
+	
+	earthOrbit = two.makeCircle(0, 0, 1000);
+	marsOrbit = two.makeCircle(0, 0, 500);
+	
+	var objects = [];
+	
+	var moon = {
+		pos: {
+			x: 1000,
+			y: 25
+		},
+		vel: {
+			x: -.2,
+			y: 1
+		},
+		accel: {
+			x: 0,
+			y: 0
+		},
+		mass: 1,
+		graphics: two.makeCircle(0, 0, 4)
+	}
+	objects.push(moon);
+	
+	var earth = {
+		pos: {
+			x: 1000,
+			y: 0
+		},
+		vel: {
+			x: 0,
+			y: 1
+		},
+		accel: {
+			x: 0,
+			y: 0
+		},
+		mass: 1000,
+		graphics: two.makeCircle(0, 0, 10)
+	}
+	objects.push(earth);
+	
+	var mars = {
+		pos: {
+			x: 500,
+			y: 0
+		},
+		vel: {
+			x: 0,
+			y: 1.412
+		},
+		accel: {
+			x: 0,
+			y: 0
+		},
+		mass: 800,
+		graphics: two.makeCircle(0, 0, 8)
+	}
+	objects.push(mars);
+	
+	var sun = {
+		pos: {
+			x: 0,
+			y: 0
+		},
+		vel: {
+			x: 0,
+			y: 0
+		},
+		accel: {
+			x: 0,
+			y: 0
+		},
+		mass: 1000000,
+		graphics: two.makeCircle(500, 500, 50)
+	}
+	objects.push(sun);
+	
+	mars.graphics.fill = "#FF0000";
+	mars.graphics.stroke = "#880000";
+	earth.graphics.fill = "#0000FF";
+	earth.graphics.stroke = "#008800";
+	moon.graphics.fill = "#BBBBBB";
+	moon.graphics.stroke = "#888888";
+	sun.graphics.fill = "#FF8800";
+	sun.graphics.stroke = "#888800";
+	
+	function calcAccel(obj1, obj2){
+		//calculate distance
+		var dx = obj1.pos.x - obj2.pos.x;
+		var dy = obj1.pos.y - obj2.pos.y;
+		var d = Math.sqrt((dx*dx)+(dy*dy));
+		
+		//calculate angle
+		var theta = Math.atan(dy/dx);
+		if(dx<0){
+			theta += 3.14159;
+		}
+		
+		//calculate acceleration components
+		var con = .001;
+		var totalAccel = (obj2.mass * con)/(d * d);
+		var accelX = -totalAccel * Math.cos(theta);
+		var accelY = -totalAccel * Math.sin(theta);
+		
+		//update acceleration values
+		obj1.accel.x += accelX;
+		obj1.accel.y += accelY;
+	}
+	
+	function updateObjects(){
+		for(var i=0; i<objects.length; i++){
+			//calculate acceleration by each other object in universe
+			objects[i].accel.x = 0;
+			objects[i].accel.y = 0;
+			for(var j=0; j<objects.length; j++){
+				if(i != j){
+					calcAccel(objects[i] , objects[j]);
+				}
+			}
+			
+			//update the velocity
+			objects[i].vel.x += objects[i].accel.x;
+			objects[i].vel.y += objects[i].accel.y;
+			
+			//update the position
+			objects[i].pos.x += objects[i].vel.x;
+			objects[i].pos.y += objects[i].vel.y;
+			
+			//draw object
+			objects[i].graphics.translation.x = objects[i].pos.x;
+			objects[i].graphics.translation.y = objects[i].pos.y;
+		}
+	}
+	
+	two.bind("update", function(frameCount){
+		updateObjects();
+	});
+	
+	two.play();
+	</script>
+</html>
